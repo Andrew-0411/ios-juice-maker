@@ -9,12 +9,13 @@
 4. [실행화면](#4-실행화면)
 5. [트러블 슈팅](#5-트러블-슈팅)
 6. [참고 링크](#6-참고-링크)
+7. [팀 회고](#7-팀-회고)
 
 ---
 ## 1. 팀원 소개
 |Andrew|혜모리|
 |---|---|
-|<img src="https://github.com/Andrew-0411/ios-juice-maker/blob/step1/images/Andrew.png" width="250">|<img src="https://github.com/Andrew-0411/ios-juice-maker/blob/step1/images/hyemory.png" width="250">|
+|<img src="https://github.com/Andrew-0411/ios-juice-maker/blob/step1/images/Andrew.png" width="200">|<img src="https://github.com/Andrew-0411/ios-juice-maker/blob/step1/images/hyemory.png" width="200">|
 
 ## 2. 타임라인 (23.01.02. ~ 23.01.20.)
 |날짜|진행 내용|
@@ -29,9 +30,25 @@
 |2023-01-11|Auto-Sizing, Auto-Layout 학습|
 |2023-01-12|stepper 생성, 싱글톤, notification, AutoLayout 추가|
 |2023-01-13|코드 컨벤션 정리 및 STEP3 PR 발송|
+|2023-01-16|Delegate 패턴,Protocol 공부|
+|2023-01-17|Protocol,Delegate 패턴 추가|
+|2023-01-18|객체지향 모델링 공부, UML 작성|
+|2023-01-19|코드 컨벤션 정리 및 STEP3 PR 발송|
+|2023-01-20|UML 정리, README 정리|
 
 ## 3. 프로젝트 순서도
-<img src="https://github.com/Andrew-0411/ios-juice-maker/blob/3edc3de4f1aee5ba4fa858eb5f604a47281a6dac/images/JuiceMakerFlowchart.jpg" width="550">
+
+<details>
+<summary> Flow Chart 보기 </summary> <br/>
+<img src="https://github.com/Andrew-0411/ios-juice-maker/blob/3edc3de4f1aee5ba4fa858eb5f604a47281a6dac/images/JuiceMakerFlowchart.jpg" width="900">
+</details> 
+<br/>
+
+<details>
+<summary> Class Diagram 보기 </summary> <br/>
+<img src="https://github.com/Andrew-0411/ios-juice-maker/blob/210385268d6174d16c2f9aecd6c964d53eca668e/images/Class%20Diagram.jpg" width="900">
+</details>
+<br/>
 
 ## 4. 실행화면
 ![fruitStore](https://user-images.githubusercontent.com/45560895/212246572-87854fb2-1b59-4c61-9c41-3e5d6802f328.gif)
@@ -166,6 +183,28 @@ private func setFruitStepper() {
 - Storyboard에 있는 stackView 기능으로 Image, Label, Stepper를 stackView로 설정하고 설정한 객체들을 다시 한번 stackView로 설정하므로써 일정한 간격으로 layout을 배치하게 되었습니다. <br/>
 <img src="https://github.com/Andrew-0411/ios-juice-maker/blob/f82289b0209f3b7c0c063d428d142c17336d4e9c/images/stackView.png" width="250">
 
+#### 🔒 **Delegate 디자인 패턴 사용기** <br/> 
+- 저희는 이번 쥬스메이커 프로젝트가 `FruitStore` 클래스를 싱글톤으로 만들어 전역에서 사용하는 것이 가장 경제적이라고 생각했으나, 단점으로 하나의 인스턴스가 여러 곳에 사용되어 코드간 결합도가 높아진다는 단점이 있었습니다.
+- Property와 Closure를 사용하는 방식은 직접전달 방식이고 Notification과 Delegate는 비동기 방식인데 저희는 Controller파일에 데이터가 있는게 아닌 Model파일에서 데이터를 저장하고 있어서 데이터를 다른곳에 저장해두고 필요할 때 꺼내가는 방식인 비동기 방식을 사용하게 되었습니다.
+- `JuiceMakerViewController`와 `FruitStockViewController`가 1:1로 데이터를 주고 받으므로, N:N에 유리한 노티피케이션 보다는 활동학습에서 공부한 `Delegate` 패턴을 적용하고 싶어 중간에 많은 수정을 하게되었습니다.
+- 🔒 누가 위임을 하고 누가 위임을 받을까?
+    - 크루인 잼킹께서 델리게이트 패턴을 사용할 때 누가 위임하고, 누가 위임받는지 생각해보는 것을 먼저 진행해보라고 하셨습니다. 그 결과 `JuiceMakerViewController`가 `FruitStockViewController`의 위임을 받아 재고를 업데이트 해주도록 하였습니다.
+- 🔒 다른 뷰 컨트롤러의 프로퍼티를 가져올 수 없다? (다운 캐스팅)
+    - 위임 시 위임하는 뷰 컨트롤러의 델리게이트를 가져와 위임을 받았다는 `VC.delegate = self`를 해주어야 한다고 배웠습니다. 
+    그런데 그냥 사용하려고하니 `UIViewController`에는 `delegate`라는 프로퍼티가 없다는 컴파일 오류가 발생했습니다. 
+    `Value of type 'UIViewController' has no member 'delegate'`
+    - `fruitStoreVC` 인스턴스를 `FruitStoreViewController`로 다운 캐스팅하니 해결되었습니다.
+```swift 
+private func moveFruitStoreViewController() {
+    guard let fruitStoreVC = storyboard?
+        .instantiateViewController(withIdentifier: "FruitStoreViewController") as? FruitStoreViewController else { return }
+    fruitStoreVC.delegate = self
+    fruitStoreVC.currentStockList = currentStockList
+    fruitStoreVC.modalPresentationStyle = .fullScreen
+    present(fruitStoreVC, animated: true, completion: nil)
+}
+```
+
 ## 6. 참고 링크
 1. [애플 개발자 공식문서 : Result](https://developer.apple.com/documentation/swift/result)
 2. [애플 개발자 공식문서 : LocalizedError](https://developer.apple.com/documentation/foundation/localizederror)
@@ -175,3 +214,30 @@ private func setFruitStepper() {
 6. [애플 개발자 공식문서 : UIStepper](https://developer.apple.com/documentation/uikit/uistepper)
 7. [애플 개발자 공식문서 : Singleton](https://developer.apple.com/documentation/swift/managing-a-shared-resource-using-a-singleton)
 8. [Cannot use instance member within property initializer 컴파일 오류](https://yeniful.tistory.com/54)
+9. [Swift 공식문서 : Structures and Classes](https://docs.swift.org/swift-book/LanguageGuide/ClassesAndStructures.html)
+10. [애플 개발자 공식문서 : Choosing Between Structures and Classes](https://developer.apple.com/documentation/swift/choosing-between-structures-and-classes)
+11. [위키백과: 통합 모델링 언어](https://ko.wikipedia.org/wiki/%ED%86%B5%ED%95%A9_%EB%AA%A8%EB%8D%B8%EB%A7%81_%EC%96%B8%EC%96%B4)
+12. [애플 개발자 공식문서 : Using Delegates to Customize Object Behavior](https://developer.apple.com/documentation/swift/using-delegates-to-customize-object-behavior)
+13. [야곰닷넷 질문모음 - 5 : delegate와 weak](https://yagom.net/forums/topic/%EC%95%BC%EA%B3%B0%EB%8B%B7%EB%84%B7-%EC%A7%88%EB%AC%B8%EB%AA%A8%EC%9D%8C-5/)
+
+## 7. 팀 회고
+
+<details>
+<summary> 팀 회고 내용 보기 </summary>
+
+### 우리팀이 잘한 점
+1. 활동학습 시간에 배웠던 여러가지 방법을 쥬스메이커에 적용해 보았습니다.
+2. 적용 전 모르는 개념을 보완하기 위해 따로 시간내서 공부했습니다.
+3. 서로 약속한 시간 준수가 철저했습니다.
+
+### 우리팀 개선할 점
+1. 접근 제한자를 객체지향 프로그래밍에 맞춰서 사용하는 방법을 좀 더 공부해야겠다고 느꼈습니다.
+
+### 팀원 서로 칭찬하기 부분
+- Andrew -> 혜모리
+제가 로직을 만드는데에 대한 어려움이 많아서 정해진 시간안에 못한 경우가 많았는데 혜모리는 안되면 될 때까지 공부하고 시도해서 저에게도 공부했던것을 가르쳐주어 많은 도움을 받았습니다. 프로젝트 처음 시작할 때는 서로 모르는게 많았지만 프로젝트를 하면서 혜모리가 실력이 빠르게 향상되는걸 보면서 나도 저렇게 성장해야겠다고 느꼈습니다.  
+
+- 혜모리 -> Andrew
+알고자하는 의지가 강하셔서 저도 대충 알고있던 부분을 다시 공부할 수 있는 기회가 됐어요! 그리고 엄청 성실하시고 경험이 많으셔서 도움을 많이 받았습니다~ UIKit를 처음해봐서 많이 막막했는데 앤드류 덕에 많이 배웠어요!
+
+</details>
